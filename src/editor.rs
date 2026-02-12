@@ -4,6 +4,8 @@ use crossterm::event::{Event, Event::Key, KeyCode::Char, KeyEvent, KeyModifiers,
 use crossterm::execute;
 use crossterm::terminal::{Clear, ClearType, disable_raw_mode, enable_raw_mode};
 
+use crate::terminal::draw_rows;
+
 pub struct Editor {
     should_quit: bool,
 }
@@ -29,6 +31,7 @@ impl Editor {
 
     pub fn run(&mut self) {
         Self::initialize().unwrap();
+        draw_rows();
         let result = self.repl();
         Self::terminate().unwrap();
         result.unwrap();
