@@ -1,10 +1,7 @@
-use std::io::stdout;
-
 use crossterm::event::{Event, Event::Key, KeyCode::Char, KeyEvent, KeyModifiers, read};
-use crossterm::execute;
-use crossterm::terminal::{Clear, ClearType, disable_raw_mode, enable_raw_mode};
 
-use crate::terminal::draw_rows;
+mod terminal;
+use terminal::{clear_screen, draw_rows, initialize, terminate};
 
 pub struct Editor {
     should_quit: bool,
@@ -15,25 +12,11 @@ impl Editor {
         Editor { should_quit: false }
     }
 
-    fn initialize() -> Result<(), std::io::Error> {
-        enable_raw_mode()?;
-        Self::clear_screen()
-    }
-
-    fn clear_screen() -> Result<(), std::io::Error> {
-        let mut stdout = stdout();
-        execute!(stdout, Clear(ClearType::All))
-    }
-
-    fn terminate() -> Result<(), std::io::Error> {
-        disable_raw_mode()
-    }
-
     pub fn run(&mut self) {
-        Self::initialize().unwrap();
+        initialize().unwrap();
         draw_rows();
         let result = self.repl();
-        Self::terminate().unwrap();
+        terminate().unwrap();
         result.unwrap();
     }
 
@@ -68,7 +51,7 @@ impl Editor {
 
     fn refresh_screen(&self) -> Result<(), std::io::Error> {
         if self.should_quit {
-            Self::clear_screen()?;
+            clear_screen()?;
             print!("Goodbye.\r\n");
         }
 
