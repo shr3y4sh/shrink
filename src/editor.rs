@@ -1,4 +1,8 @@
+use std::io::Error;
+
 use crossterm::event::{Event, Event::Key, KeyCode::Char, KeyEvent, KeyModifiers, read};
+
+use crate::editor::terminal as term;
 
 mod terminal;
 
@@ -12,9 +16,9 @@ impl Editor {
     }
 
     pub fn run(&mut self) {
-        terminal::initialize().unwrap();
+        term::initialize().unwrap();
         let result = self.repl();
-        terminal::terminate().unwrap();
+        term::terminate().unwrap();
         result.unwrap();
     }
 
@@ -33,7 +37,7 @@ impl Editor {
         }
     }
 
-    fn repl(&mut self) -> Result<(), std::io::Error> {
+    fn repl(&mut self) -> Result<(), Error> {
         loop {
             self.refresh_screen()?;
 
@@ -48,29 +52,34 @@ impl Editor {
         Ok(())
     }
 
-    pub fn draw_rows() -> Result<(), std::io::Error> {
-        let height = terminal::terminal_size().1;
-
+    pub fn draw_rows() -> Result<(), Error> {
+        let term::Size { height, .. } = term::get_size()?;
         for curr in 0..height {
-            print!("~");
+            term::clear_line()?;
+            term::print("~")?;
 
             if curr + 1 < height {
-                print!("\r\n");
+                term::print("\r\n")?;
             }
         }
+
+        term::execute()?;
 
         Ok(())
     }
 
-    fn refresh_screen(&self) -> Result<(), std::io::Error> {
+    fn refresh_screen(&self) -> Result<(), Error> {
+        term::hide_cursor()?;
         if self.should_quit {
-            terminal::clear_screen()?;
-            print!("Goodbye.\r\n");
+            term::clear_screen()?;
+            term::print("Goodbye.\r\n")?;
         } else {
             Self::draw_rows()?;
-            terminal::move_cursor(0, 0)?;
+            term::move_cursor_to(term::Position { x: 0, y: 0 })?;
         }
 
+        term::show_cursor()?;
+        term::execute()?;
         Ok(())
     }
 }
