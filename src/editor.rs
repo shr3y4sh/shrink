@@ -6,6 +6,9 @@ use crate::editor::terminal as term;
 
 mod terminal;
 
+const NAME: &str = env!("CARGO_PKG_NAME");
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 pub struct Editor {
     should_quit: bool,
 }
@@ -56,14 +59,17 @@ impl Editor {
         let term::Size { height, .. } = term::get_size()?;
         for curr in 0..height {
             term::clear_line()?;
-            term::print("~")?;
+
+            if curr == height / 3 {
+                Self::add_title()?;
+            } else {
+                term::print("~")?;
+            }
 
             if curr + 1 < height {
                 term::print("\r\n")?;
             }
         }
-
-        term::execute()?;
 
         Ok(())
     }
@@ -80,6 +86,26 @@ impl Editor {
 
         term::show_cursor()?;
         term::execute()?;
+        Ok(())
+    }
+
+    pub fn add_title() -> Result<(), Error> {
+        let termsize = term::get_size()?;
+
+        let mut welcome_msg = format!("Welcome to {NAME} -- version {VERSION}");
+
+        let width = termsize.width as usize;
+
+        let padding = (width - welcome_msg.len()) / 2;
+
+        let spaces = " ".repeat(padding - 1);
+
+        welcome_msg = format!("~{spaces}{welcome_msg}");
+
+        welcome_msg.truncate(width);
+
+        term::print(&welcome_msg)?;
+
         Ok(())
     }
 }
