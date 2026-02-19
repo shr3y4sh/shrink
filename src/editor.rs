@@ -96,9 +96,9 @@ impl Editor {
 
         let width = termsize.width as usize;
 
-        let padding = (width - welcome_msg.len()) / 2;
+        let padding = (width.saturating_sub(welcome_msg.len())) / 2;
 
-        let spaces = " ".repeat(padding - 1);
+        let spaces = " ".repeat(padding.saturating_sub(1));
 
         welcome_msg = format!("~{spaces}{welcome_msg}");
 
