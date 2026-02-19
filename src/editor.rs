@@ -92,7 +92,7 @@ impl Editor {
     pub fn add_title() -> Result<(), Error> {
         let termsize = term::get_size()?;
 
-        let mut welcome_msg = format!("Welcome to {NAME} -- version {VERSION}");
+        let mut welcome_msg = format!("{NAME} editor -- version {VERSION}");
 
         let width = termsize.width as usize;
 

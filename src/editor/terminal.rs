@@ -1,10 +1,11 @@
+use std::fmt::Display;
 use std::io::{Error, Write, stdout};
 
 use crossterm::cursor::{Hide, MoveTo, Show};
-use crossterm::queue;
 use crossterm::style::Print;
 use crossterm::terminal::size;
 use crossterm::terminal::{Clear, ClearType, disable_raw_mode, enable_raw_mode};
+use crossterm::{Command, queue};
 
 #[derive(Copy, Clone)]
 pub struct Size {
@@ -30,18 +31,18 @@ pub fn execute() -> Result<(), Error> {
 }
 
 pub fn clear_line() -> Result<(), Error> {
-    queue!(stdout(), Clear(ClearType::CurrentLine))
+    queue_command(Clear(ClearType::CurrentLine))
 }
 
 pub fn show_cursor() -> Result<(), Error> {
-    queue!(stdout(), Show)
+    queue_command(Show)
 }
 
 pub fn hide_cursor() -> Result<(), Error> {
-    queue!(stdout(), Hide)
+    queue_command(Hide)
 }
 pub fn clear_screen() -> Result<(), Error> {
-    queue!(stdout(), Clear(ClearType::All))
+    queue_command(Clear(ClearType::All))
 }
 
 pub fn terminate() -> Result<(), Error> {
@@ -57,10 +58,14 @@ pub fn get_size() -> Result<Size, Error> {
     })
 }
 
-pub fn print(c: &str) -> Result<(), Error> {
-    queue!(stdout(), Print(c))
+pub fn queue_command<C: Command>(command: C) -> Result<(), Error> {
+    queue!(stdout(), command)
+}
+
+pub fn print<T: Display>(string: T) -> Result<(), Error> {
+    queue_command(Print(string))
 }
 
 pub fn move_cursor_to(Position { x, y }: Position) -> Result<(), Error> {
-    queue!(stdout(), MoveTo(x, y))
+    queue_command(MoveTo(x, y))
 }
