@@ -22,6 +22,8 @@ pub struct Cursor {
 }
 
 impl Cursor {
+    /// Moves the caret position using the location
+    ///     code: `KeyCode` event listened by the repl
     pub fn move_caret(&mut self, code: KeyCode) -> Result<(), Error> {
         let Location { mut x, mut y } = self.location;
         let Size { width, height } = get_size()?;
@@ -59,6 +61,8 @@ impl Cursor {
         Ok(())
     }
 
+    /// Moves the cursor position
+    ///     position: `Position` struct where the cursor should go
     pub fn move_to(position: Position) -> Result<(), Error> {
         #[allow(clippy::cast_possible_truncation)]
         queue_command(MoveTo(position.x as u16, position.y as u16))
