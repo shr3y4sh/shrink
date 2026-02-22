@@ -1,0 +1,11 @@
+   Compiling shrink v0.1.0 (/home/shreyashs/Workspace/Rust/shrink)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.37s
+     Running `target/debug/shrink`
+[src/editor.rs:65:21] "down" = "down"
+[src/editor.rs:65:21] "down" = "down"
+[src/editor.rs:57:21] "right" = "right"
+[src/editor.rs:57:21] "right" = "right"
+[src/editor.rs:53:21] "left" = "left"
+[src/editor.rs:53:21] "left" = "left"
+[src/editor.rs:61:21] "up" = "up"
+[src/editor.rs:61:21] "up" = "up"
