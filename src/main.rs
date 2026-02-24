@@ -1,9 +1,8 @@
 #![warn(clippy::all, clippy::pedantic, clippy::print_stdout)]
-
-/*
- * This is a terminal based editor make as a practice project for Rust
- * It is based on hecto, the tutorial provided by https://philippflenker.com/hecto/
- */
+//! ## A terminal based file editor written in rust (for learning purpose)
+//! Follows the tutorial by Phillip Flenker (www.phillipflenker.com/hecto)
+//!
+//! Created by Shreyash
 
 mod editor;
 use editor::Editor;

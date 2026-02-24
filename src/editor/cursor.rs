@@ -1,3 +1,6 @@
+//! # Cursor Module
+//!
+//! This module provides the Cursor struct and its implementation functions
 use std::io::Error;
 
 use core::cmp::min;
@@ -9,12 +12,16 @@ use crossterm::{
 
 use crate::editor::terminal::{Position, Size, get_size, queue_command};
 
+/// ### Represents the location in the text of the file
+/// Different from the Caret position (denoted by struct Position)
 #[derive(Clone, Copy, Default)]
 pub struct Location {
     pub x: usize,
     pub y: usize,
 }
 
+/// * `visibility` - to store state of cursor visibility (will be used later meaningfully)
+/// * `location` - keeps the location of cursor always in sync
 #[derive(Default)]
 pub struct Cursor {
     pub visibility: bool,
@@ -23,7 +30,7 @@ pub struct Cursor {
 
 impl Cursor {
     /// Moves the caret position using the location
-    ///     code: `KeyCode` event listened by the repl
+    /// * `code`: `KeyCode` event listened by the repl
     pub fn move_caret(&mut self, code: KeyCode) -> Result<(), Error> {
         let Location { mut x, mut y } = self.location;
         let Size { width, height } = get_size()?;
@@ -62,7 +69,7 @@ impl Cursor {
     }
 
     /// Moves the cursor position
-    ///     position: `Position` struct where the cursor should go
+    /// * `position`: `Position` struct where the cursor should go
     pub fn move_to(position: Position) -> Result<(), Error> {
         #[allow(clippy::cast_possible_truncation)]
         queue_command(MoveTo(position.x as u16, position.y as u16))

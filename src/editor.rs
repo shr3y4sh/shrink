@@ -21,9 +21,6 @@ mod terminal;
 const NAME: &str = env!("CARGO_PKG_NAME");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-/// Editor struct
-///     `cursor`: the implementation of cursor manipulation struct
-///     `should_quit`: a boolean value to quit the editor
 #[derive(Default)]
 pub struct Editor {
     cursor: Cursor,
@@ -32,7 +29,8 @@ pub struct Editor {
 
 impl Editor {
     /// This is the entry point into the program
-    /// initialize terminal, start the `repl`, terminate and check the result
+    /// The terminal is initialized and call to repl starts the infinite loop to listen for events
+    /// Result is stored in `result` the terminal is terminated
     pub fn run(&mut self) {
         term::initialize().unwrap();
         let result = self.repl();
@@ -41,7 +39,8 @@ impl Editor {
     }
 
     /// Any key press or other event will be evaluated by this
-    ///     event: crossterm event enum
+    ///
+    /// * `event` - from crossterm `Event` type which specifies the type of event
     fn evaluate_event(&mut self, event: &Event) -> Result<(), Error> {
         if let Key(KeyEvent {
             code,
@@ -73,8 +72,9 @@ impl Editor {
         Ok(())
     }
 
-    /// This start the repl loop, which breaks only when `should_quit` is true
-    /// it listens for any event and evaluates it, the execution happen in `refresh_screen` fn
+    /// Refresh the screen at each iteration. `refresh_screen` flushes the stdout buffer each time,
+    /// and any other command which is necessary to maintain the screen
+    /// It also checks for `should_quit` variable, if the keypress event has signalled quitting
     fn repl(&mut self) -> Result<(), Error> {
         loop {
             // Any pending command in the queue gets flushed
@@ -140,7 +140,7 @@ impl Editor {
         term::execute()
     }
 
-    /// draws the welcome message third of the way from top and at half width
+    /// Draws the welcome message third of the way from top and at half width
     pub fn draw_welcome_msg() -> Result<(), Error> {
         let termsize = term::get_size()?;
 
