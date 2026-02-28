@@ -2,7 +2,7 @@
  * Starting with the Editor struct
  * */
 
-use std::{fs, io::Error};
+use std::{env::args, fs, io::Error};
 
 use crossterm::event::{
     Event::{self, Key},
@@ -26,10 +26,11 @@ impl Editor {
     /// This is the entry point into the program
     /// The terminal is initialized and call to repl starts the infinite loop to listen for events
     /// Result is stored in `result` the terminal is terminated
-    pub fn run(&mut self, args: &[String]) {
+    pub fn run(&mut self) {
         term::initialize().unwrap();
 
-        self.load_file(args);
+        let args: Vec<String> = args().collect();
+        self.load_file(&args);
 
         let result = self.repl();
         term::terminate().unwrap();
@@ -42,9 +43,9 @@ impl Editor {
         if let Some(file) = args.get(1) {
             let file_contents = fs::read_to_string(file).unwrap_or(String::new());
 
-            self.view.init_buffer(&file_contents);
+            self.view.load(&file_contents);
         } else {
-            self.view.init_buffer("");
+            self.view.load("");
         }
     }
 

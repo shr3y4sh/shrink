@@ -21,14 +21,12 @@ impl View {
     }
 
     /// if file contents is not empty, load into buffer
-    pub fn init_buffer(&mut self, file: &str) {
+    pub fn load(&mut self, file: &str) {
         if file.is_empty() {
             return;
         }
 
-        for line in file.lines() {
-            self.buff.lines.push(line.to_string());
-        }
+        self.buff = Buffer::init_buffer(file);
     }
 
     /// We draw all the rows with the tilde '~' like vim does
@@ -52,6 +50,8 @@ impl View {
         Ok(())
     }
 
+    /// this returns number of buffer lines
+    /// so that drawing of tildes happen after that line
     fn render_buffer_lines(&self) -> Result<usize, Error> {
         for line in &self.buff.lines {
             term::clear_line()?;
@@ -62,7 +62,7 @@ impl View {
         Ok(self.buff.lines.len())
     }
 
-    pub fn draw_welcome_msg() -> Result<(), Error> {
+    fn draw_welcome_msg() -> Result<(), Error> {
         let termsize = term::get_size()?;
 
         let mut welcome_msg = format!("{NAME} editor -- version {VERSION}");
