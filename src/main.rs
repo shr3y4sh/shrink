@@ -5,8 +5,11 @@
 //! Created by Shreyash
 
 mod editor;
+use std::env::args;
+
 use editor::Editor;
 
 fn main() {
-    Editor::default().run();
+    let args: Vec<String> = args().collect();
+    Editor::default().run(&args);
 }

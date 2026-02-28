@@ -2,40 +2,50 @@
  * Starting with the Editor struct
  * */
 
-use std::io::Error;
+use std::{fs, io::Error};
 
 use crossterm::event::{
     Event::{self, Key},
     KeyCode, KeyEvent, KeyEventKind, KeyModifiers, read,
 };
 
-use crate::editor::{
-    cursor::Cursor,
-    term::{Position, Size},
-    terminal as term,
-};
+use crate::editor::{cursor::Cursor, term::Position, terminal as term, view::View};
 
 mod cursor;
 mod terminal;
-
-const NAME: &str = env!("CARGO_PKG_NAME");
-const VERSION: &str = env!("CARGO_PKG_VERSION");
+mod view;
 
 #[derive(Default)]
 pub struct Editor {
     cursor: Cursor,
     should_quit: bool,
+    view: View,
 }
 
 impl Editor {
     /// This is the entry point into the program
     /// The terminal is initialized and call to repl starts the infinite loop to listen for events
     /// Result is stored in `result` the terminal is terminated
-    pub fn run(&mut self) {
+    pub fn run(&mut self, args: &[String]) {
         term::initialize().unwrap();
+
+        self.load_file(args);
+
         let result = self.repl();
         term::terminate().unwrap();
         result.unwrap();
+    }
+
+    /// Checks if file exists, if not, initialize empty buffer,
+    /// else init buffer with contents
+    fn load_file(&mut self, args: &[String]) {
+        if let Some(file) = args.get(1) {
+            let file_contents = fs::read_to_string(file).unwrap_or(String::new());
+
+            self.view.init_buffer(&file_contents);
+        } else {
+            self.view.init_buffer("");
+        }
     }
 
     /// Any key press or other event will be evaluated by this
@@ -91,29 +101,6 @@ impl Editor {
         Ok(())
     }
 
-    /// At the start we draw all the rows with the tilde '~' like vim does
-    /// starting from top it clears each line, prints ~, and check if we are not at end
-    pub fn draw_rows() -> Result<(), Error> {
-        let Size { height, .. } = term::get_size()?;
-        for curr in 0..height {
-            term::clear_line()?;
-
-            // One third of the way we draw the Welcome Message
-            if curr == height / 3 {
-                Self::draw_welcome_msg()?;
-            } else {
-                term::print("~")?;
-            }
-
-            // for height just at max, we do not add newline to avoid scroll off
-            if curr + 1 < height {
-                term::print("\r\n")?;
-            }
-        }
-
-        Ok(())
-    }
-
     /// This does most of the heavy lifting
     /// Executes all the queued commands, check for `should_quit`, clears screens and `draw_rows`
     fn refresh_screen(&mut self) -> Result<(), Error> {
@@ -126,7 +113,7 @@ impl Editor {
             term::clear_screen()?;
             term::print("Goodbye.\r\n")?;
         } else {
-            Self::draw_rows()?;
+            self.view.render()?;
             Cursor::move_to(Position {
                 x: self.cursor.location.x,
                 y: self.cursor.location.y,
@@ -138,24 +125,5 @@ impl Editor {
 
         // flush the stdout buffer
         term::execute()
-    }
-
-    /// Draws the welcome message third of the way from top and at half width
-    pub fn draw_welcome_msg() -> Result<(), Error> {
-        let termsize = term::get_size()?;
-
-        let mut welcome_msg = format!("{NAME} editor -- version {VERSION}");
-
-        let width = termsize.width as usize;
-
-        let padding = (width.saturating_sub(welcome_msg.len())) / 2;
-
-        let spaces = " ".repeat(padding.saturating_sub(1));
-
-        welcome_msg = format!("~{spaces}{welcome_msg}");
-
-        welcome_msg.truncate(width);
-
-        term::print(&welcome_msg)
     }
 }

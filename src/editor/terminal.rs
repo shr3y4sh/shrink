@@ -1,4 +1,3 @@
-use std::fmt::Display;
 use std::io::{Error, Write, stdout};
 
 use crossterm::style::Print;
@@ -52,6 +51,6 @@ pub fn queue_command<C: Command>(command: C) -> Result<(), Error> {
     queue!(stdout(), command)
 }
 
-pub fn print<T: Display>(string: T) -> Result<(), Error> {
+pub fn print(string: &str) -> Result<(), Error> {
     queue_command(Print(string))
 }
