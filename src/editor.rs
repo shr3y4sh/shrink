@@ -6,10 +6,7 @@ use std::{env, fs, io::Error};
 
 use core::cmp::min;
 
-use crossterm::event::{
-    Event::{self, Key},
-    KeyCode, KeyEvent, KeyEventKind, KeyModifiers, read,
-};
+use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers, read};
 
 use crate::editor::{term::Position, terminal as term, view::View};
 
@@ -62,32 +59,44 @@ impl Editor {
     /// Any key press or other event will be evaluated by this
     ///
     /// * `event` - from crossterm `Event` type which specifies the type of event
-    fn evaluate_event(&mut self, event: &Event) -> Result<(), Error> {
-        if let Key(KeyEvent {
-            code,
-            modifiers,
-            kind: KeyEventKind::Press,
-            ..
-        }) = event
-        {
-            match code {
-                // Ctrl+q keypress quits the editor
-                KeyCode::Char('q') if *modifiers == KeyModifiers::CONTROL => {
+    #[allow(clippy::needless_pass_by_value)]
+    fn evaluate_event(&mut self, event: Event) -> Result<(), Error> {
+        match event {
+            Event::Key(KeyEvent {
+                code,
+                modifiers,
+                kind: KeyEventKind::Press,
+                ..
+            }) => match (code, modifiers) {
+                (KeyCode::Char('q'), KeyModifiers::CONTROL) => {
                     self.should_quit = true;
                 }
-                // Any cursor movement keypress go here
-                KeyCode::Right
-                | KeyCode::Left
-                | KeyCode::Down
-                | KeyCode::Up
-                | KeyCode::PageDown
-                | KeyCode::PageUp
-                | KeyCode::Home
-                | KeyCode::End => {
-                    self.change_location(*code)?;
+                (
+                    KeyCode::Right
+                    | KeyCode::Left
+                    | KeyCode::Down
+                    | KeyCode::Up
+                    | KeyCode::PageDown
+                    | KeyCode::PageUp
+                    | KeyCode::Home
+                    | KeyCode::End,
+                    _,
+                ) => {
+                    self.change_location(code)?;
                 }
+
                 _ => (),
+            },
+            Event::Resize(width, height) => {
+                let y = height as usize;
+                let x = width as usize;
+
+                self.view.resize(terminal::Size {
+                    width: x,
+                    height: y,
+                });
             }
+            _ => (),
         }
 
         Ok(())
@@ -145,7 +154,7 @@ impl Editor {
             }
 
             let event = read()?;
-            self.evaluate_event(&event)?;
+            self.evaluate_event(event)?;
         }
 
         Ok(())
@@ -165,8 +174,8 @@ impl Editor {
         } else {
             self.view.render()?;
             term::move_caret(Position {
-                x: self.location.x,
-                y: self.location.y,
+                column: self.location.x,
+                row: self.location.y,
             })?;
         }
 
