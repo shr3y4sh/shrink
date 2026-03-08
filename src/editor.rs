@@ -2,22 +2,31 @@
  * Starting with the Editor struct
  * */
 
-use std::{env::args, fs, io::Error};
+use std::{env, fs, io::Error};
+
+use core::cmp::min;
 
 use crossterm::event::{
     Event::{self, Key},
     KeyCode, KeyEvent, KeyEventKind, KeyModifiers, read,
 };
 
-use crate::editor::{cursor::Cursor, term::Position, terminal as term, view::View};
+use crate::editor::{term::Position, terminal as term, view::View};
 
-mod cursor;
 mod terminal;
 mod view;
 
+/// ### Represents the location in the text of the file
+/// Different from the Caret position (denoted by struct Position)
+#[derive(Clone, Copy, Default)]
+pub struct Location {
+    pub x: usize,
+    pub y: usize,
+}
+
 #[derive(Default)]
 pub struct Editor {
-    cursor: Cursor,
+    location: Location,
     should_quit: bool,
     view: View,
 }
@@ -29,8 +38,7 @@ impl Editor {
     pub fn run(&mut self) {
         term::initialize().unwrap();
 
-        let args: Vec<String> = args().collect();
-        self.load_file(&args);
+        self.load_file();
 
         let result = self.repl();
         term::terminate().unwrap();
@@ -39,13 +47,15 @@ impl Editor {
 
     /// Checks if file exists, if not, initialize empty buffer,
     /// else init buffer with contents
-    fn load_file(&mut self, args: &[String]) {
+    fn load_file(&mut self) {
+        let args: Vec<String> = env::args().collect();
+
         if let Some(file) = args.get(1) {
             let file_contents = fs::read_to_string(file).unwrap_or(String::new());
 
-            self.view.load(&file_contents);
+            self.view.load_buffer(&file_contents);
         } else {
-            self.view.load("");
+            self.view.load_buffer("");
         }
     }
 
@@ -74,12 +84,51 @@ impl Editor {
                 | KeyCode::PageUp
                 | KeyCode::Home
                 | KeyCode::End => {
-                    self.cursor.move_caret(*code)?;
+                    self.change_location(*code)?;
                 }
                 _ => (),
             }
         }
 
+        Ok(())
+    }
+
+    /// Moves the caret position using the location
+    /// * `code`: `KeyCode` event listened by the repl
+    fn change_location(&mut self, code: KeyCode) -> Result<(), Error> {
+        let Location { mut x, mut y } = self.location;
+        let term::Size { width, height } = term::get_size()?;
+
+        match code {
+            KeyCode::Up => {
+                y = y.saturating_sub(1);
+            }
+            KeyCode::Down => {
+                y = min(height.saturating_sub(1), y.saturating_add(1));
+            }
+            KeyCode::Left => {
+                x = x.saturating_sub(1);
+            }
+            KeyCode::Right => {
+                x = min(width.saturating_sub(1), x.saturating_add(1));
+            }
+            KeyCode::End => {
+                x = width.saturating_sub(1);
+            }
+            KeyCode::Home => {
+                x = 0;
+            }
+            KeyCode::PageUp => {
+                y = 0;
+            }
+            KeyCode::PageDown => {
+                y = height.saturating_sub(1);
+            }
+
+            _ => (),
+        }
+
+        self.location = Location { x, y };
         Ok(())
     }
 
@@ -106,8 +155,8 @@ impl Editor {
     /// Executes all the queued commands, check for `should_quit`, clears screens and `draw_rows`
     fn refresh_screen(&mut self) -> Result<(), Error> {
         // to avoid weird cursor blinking, we hide it
-        self.cursor.hide()?;
-        Cursor::move_to(Position::default())?;
+        term::hide_caret()?;
+        term::move_caret(Position::default())?;
 
         // any cursor moving happens actually at screen refresh
         if self.should_quit {
@@ -115,14 +164,14 @@ impl Editor {
             term::print("Goodbye.\r\n")?;
         } else {
             self.view.render()?;
-            Cursor::move_to(Position {
-                x: self.cursor.location.x,
-                y: self.cursor.location.y,
+            term::move_caret(Position {
+                x: self.location.x,
+                y: self.location.y,
             })?;
         }
 
         // show the cursor at the end of all the refreshing
-        self.cursor.show()?;
+        term::show_caret()?;
 
         // flush the stdout buffer
         term::execute()

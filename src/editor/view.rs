@@ -21,7 +21,7 @@ impl View {
     }
 
     /// if file contents is not empty, load into buffer
-    pub fn load(&mut self, file: &str) {
+    pub fn load_buffer(&mut self, file: &str) {
         if file.is_empty() {
             return;
         }

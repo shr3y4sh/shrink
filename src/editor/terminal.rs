@@ -1,5 +1,7 @@
 use std::io::{Error, Write, stdout};
 
+use crossterm::cursor::{Hide, MoveTo, Show};
+
 use crossterm::style::Print;
 use crossterm::terminal::{Clear, ClearType, disable_raw_mode, enable_raw_mode, size};
 use crossterm::{Command, queue};
@@ -14,6 +16,21 @@ pub struct Size {
 pub struct Position {
     pub x: usize,
     pub y: usize,
+}
+
+/// Moves the cursor position
+/// * `position`: `Position` struct where the cursor should go
+pub fn move_caret(position: Position) -> Result<(), Error> {
+    #[allow(clippy::cast_possible_truncation)]
+    queue_command(MoveTo(position.x as u16, position.y as u16))
+}
+
+pub fn show_caret() -> Result<(), Error> {
+    queue_command(Show)
+}
+
+pub fn hide_caret() -> Result<(), Error> {
+    queue_command(Hide)
 }
 
 pub fn terminate() -> Result<(), Error> {
