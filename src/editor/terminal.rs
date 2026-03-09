@@ -1,10 +1,13 @@
 use std::io::{Error, Write, stdout};
 
-use crossterm::cursor::{Hide, MoveTo, Show};
-
 use crossterm::style::Print;
-use crossterm::terminal::{Clear, ClearType, disable_raw_mode, enable_raw_mode, size};
+use crossterm::terminal::{
+    Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode,
+    enable_raw_mode, size,
+};
 use crossterm::{Command, queue};
+
+use super::cursor;
 
 #[derive(Copy, Clone, Default)]
 pub struct Size {
@@ -12,34 +15,16 @@ pub struct Size {
     pub height: usize,
 }
 
-#[derive(Copy, Clone, Default)]
-pub struct Position {
-    pub column: usize,
-    pub row: usize,
-}
-
-/// Moves the cursor position
-/// * `position`: `Position` struct where the cursor should go
-pub fn move_caret(position: Position) -> Result<(), Error> {
-    #[allow(clippy::cast_possible_truncation)]
-    queue_command(MoveTo(position.column as u16, position.row as u16))
-}
-
-pub fn show_caret() -> Result<(), Error> {
-    queue_command(Show)
-}
-
-pub fn hide_caret() -> Result<(), Error> {
-    queue_command(Hide)
-}
-
 pub fn terminate() -> Result<(), Error> {
+    exit_alt_screen()?;
+    cursor::show_caret()?;
     execute()?;
     disable_raw_mode()
 }
 
 pub fn initialize() -> Result<(), Error> {
     enable_raw_mode()?;
+    enter_alt_screen()?;
     clear_screen()?;
     execute()
 }
@@ -62,6 +47,20 @@ pub fn get_size() -> Result<Size, Error> {
         width: res.0 as usize,
         height: res.1 as usize,
     })
+}
+
+pub fn print_row(row: usize, text: &str) -> Result<(), Error> {
+    cursor::move_caret(cursor::Position { column: 0, row })?;
+    clear_line()?;
+    print(text)
+}
+
+fn exit_alt_screen() -> Result<(), Error> {
+    queue_command(LeaveAlternateScreen)
+}
+
+fn enter_alt_screen() -> Result<(), Error> {
+    queue_command(EnterAlternateScreen)
 }
 
 pub fn queue_command<C: Command>(command: C) -> Result<(), Error> {

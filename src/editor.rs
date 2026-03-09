@@ -2,14 +2,15 @@
  * Starting with the Editor struct
  * */
 
-use std::{env, fs, io::Error};
+use std::{io::Error, panic};
 
 use core::cmp::min;
 
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers, read};
 
-use crate::editor::{term::Position, terminal as term, view::View};
+use crate::editor::{terminal as term, view::View};
 
+mod cursor;
 mod terminal;
 mod view;
 
@@ -21,7 +22,6 @@ pub struct Location {
     pub y: usize,
 }
 
-#[derive(Default)]
 pub struct Editor {
     location: Location,
     should_quit: bool,
@@ -29,30 +29,49 @@ pub struct Editor {
 }
 
 impl Editor {
-    /// This is the entry point into the program
-    /// The terminal is initialized and call to repl starts the infinite loop to listen for events
-    /// Result is stored in `result` the terminal is terminated
-    pub fn run(&mut self) {
-        term::initialize().unwrap();
+    pub fn new() -> Result<Self, Error> {
+        term::initialize()?;
 
-        self.load_file();
+        let panic_hook = panic::take_hook();
 
-        let result = self.repl();
-        term::terminate().unwrap();
-        result.unwrap();
+        panic::set_hook(Box::new(move |panic_info| {
+            let _ = term::terminate();
+
+            panic_hook(panic_info);
+        }));
+
+        let mut view = View::default();
+        view.load_file();
+
+        Ok(Self {
+            location: Location::default(),
+            should_quit: false,
+            view,
+        })
     }
 
-    /// Checks if file exists, if not, initialize empty buffer,
-    /// else init buffer with contents
-    fn load_file(&mut self) {
-        let args: Vec<String> = env::args().collect();
+    /// This is the entry point into the program
+    /// The terminal is initialized and call to run starts the infinite loop to listen for events
+    /// Refresh the screen at each iteration. `refresh_screen` flushes the stdout buffer each time,
+    /// and any other command which is necessary to maintain the screen
+    /// It also checks for `should_quit` variable, if the keypress event has signalled quitting
+    pub fn run(&mut self) {
+        loop {
+            let _ = self.refresh_screen();
 
-        if let Some(file) = args.get(1) {
-            let file_contents = fs::read_to_string(file).unwrap_or(String::new());
+            if self.should_quit {
+                break;
+            }
 
-            self.view.load_buffer(&file_contents);
-        } else {
-            self.view.load_buffer("");
+            match read() {
+                Ok(event) => self.evaluate_event(event),
+                Err(err) => {
+                    #[cfg(debug_assertions)]
+                    {
+                        panic!("Could not read event: {err:?}");
+                    }
+                }
+            }
         }
     }
 
@@ -60,7 +79,7 @@ impl Editor {
     ///
     /// * `event` - from crossterm `Event` type which specifies the type of event
     #[allow(clippy::needless_pass_by_value)]
-    fn evaluate_event(&mut self, event: Event) -> Result<(), Error> {
+    fn evaluate_event(&mut self, event: Event) {
         match event {
             Event::Key(KeyEvent {
                 code,
@@ -82,7 +101,7 @@ impl Editor {
                     | KeyCode::End,
                     _,
                 ) => {
-                    self.change_location(code)?;
+                    self.change_location(code);
                 }
 
                 _ => (),
@@ -98,15 +117,13 @@ impl Editor {
             }
             _ => (),
         }
-
-        Ok(())
     }
 
     /// Moves the caret position using the location
     /// * `code`: `KeyCode` event listened by the repl
-    fn change_location(&mut self, code: KeyCode) -> Result<(), Error> {
+    fn change_location(&mut self, code: KeyCode) {
         let Location { mut x, mut y } = self.location;
-        let term::Size { width, height } = term::get_size()?;
+        let term::Size { width, height } = term::get_size().unwrap_or_default();
 
         match code {
             KeyCode::Up => {
@@ -138,51 +155,31 @@ impl Editor {
         }
 
         self.location = Location { x, y };
-        Ok(())
-    }
-
-    /// Refresh the screen at each iteration. `refresh_screen` flushes the stdout buffer each time,
-    /// and any other command which is necessary to maintain the screen
-    /// It also checks for `should_quit` variable, if the keypress event has signalled quitting
-    fn repl(&mut self) -> Result<(), Error> {
-        loop {
-            // Any pending command in the queue gets flushed
-            self.refresh_screen()?;
-
-            if self.should_quit {
-                break;
-            }
-
-            let event = read()?;
-            self.evaluate_event(event)?;
-        }
-
-        Ok(())
     }
 
     /// This does most of the heavy lifting
     /// Executes all the queued commands, check for `should_quit`, clears screens and `draw_rows`
     fn refresh_screen(&mut self) -> Result<(), Error> {
-        // to avoid weird cursor blinking, we hide it
-        term::hide_caret()?;
-        term::move_caret(Position::default())?;
+        cursor::hide_caret()?;
+        cursor::move_caret(cursor::Position::default())?;
 
-        // any cursor moving happens actually at screen refresh
-        if self.should_quit {
-            term::clear_screen()?;
-            term::print("Goodbye.\r\n")?;
-        } else {
-            self.view.render()?;
-            term::move_caret(Position {
-                column: self.location.x,
-                row: self.location.y,
-            })?;
-        }
+        self.view.render();
+        cursor::move_caret(cursor::Position {
+            column: self.location.x,
+            row: self.location.y,
+        })?;
 
-        // show the cursor at the end of all the refreshing
-        term::show_caret()?;
+        cursor::show_caret()?;
 
-        // flush the stdout buffer
         term::execute()
+    }
+}
+
+impl Drop for Editor {
+    fn drop(&mut self) {
+        let _ = term::terminate();
+        if self.should_quit {
+            let _ = term::print("Goodbye\r\n");
+        }
     }
 }
