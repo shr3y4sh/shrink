@@ -1,6 +1,6 @@
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 
-use crate::editor::terminal::Size;
+use super::terminal::Size;
 
 pub enum Direction {
     PageUp,

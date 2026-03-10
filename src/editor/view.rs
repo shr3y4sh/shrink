@@ -1,9 +1,8 @@
 use std::{env, fs};
 
-use crate::editor::{cursor::Position, editorcommand::Direction, view::line::Line};
-
 use super::{
-    editorcommand::EditorCommand,
+    cursor::Position,
+    editorcommand::{Direction, EditorCommand},
     terminal::{self as term, Size},
 };
 
@@ -87,40 +86,55 @@ impl View {
     /// * `code`: `KeyCode` event listened by the repl
     fn change_location(&mut self, direction: &Direction) {
         let Location { mut x, mut y } = self.location;
-        // let term::Size { width, height } = self.size;
+        let height = self.size.height;
 
         let doc_length = self.buff.lines.len();
-        let line_length = self.buff.lines.get(y).unwrap_or(&Line::from("")).len();
+        let mut line_length: usize = 0;
+
+        if let Some(line) = self.buff.lines.get(y) {
+            line_length = line.len();
+        }
 
         match direction {
             Direction::Up => {
                 y = y.saturating_sub(1);
-            }
-            Direction::Down => {
-                if y < doc_length {
-                    y = y.saturating_add(1);
+                if let Some(line) = self.buff.lines.get(y) {
+                    x = x.min(line.len());
                 }
             }
+
+            Direction::Down => {
+                if let Some(next) = self.buff.lines.get(y + 1) {
+                    y += 1;
+                    x = x.min(next.len());
+                }
+            }
+
             Direction::Left => {
-                x = x.saturating_sub(1);
+                if y > 0
+                    && x == 0
+                    && let Some(prev) = self.buff.lines.get(y.saturating_sub(1))
+                {
+                    y = y.saturating_sub(1);
+                    x = prev.len();
+                } else {
+                    x = x.saturating_sub(1);
+                }
             }
             Direction::Right => {
                 if x < line_length {
                     x = x.saturating_add(1);
+                } else {
+                    x = 0;
+                    if y < doc_length {
+                        y = y.saturating_add(1);
+                    }
                 }
             }
-            Direction::End => {
-                x = line_length.saturating_sub(1);
-            }
-            Direction::Home => {
-                x = 0;
-            }
-            Direction::PageUp => {
-                y = 0;
-            }
-            Direction::PageDown => {
-                y = doc_length.saturating_sub(1);
-            }
+            Direction::End => x = line_length,
+            Direction::Home => x = 0,
+            Direction::PageUp => y = y.saturating_sub(height),
+            Direction::PageDown => y = (y + height).min(doc_length),
         }
 
         self.location = Location { x, y };
