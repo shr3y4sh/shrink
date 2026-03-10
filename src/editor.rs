@@ -2,7 +2,7 @@ use std::{io::Error, panic};
 
 use crossterm::event::{Event, KeyEvent, KeyEventKind, read};
 
-use crate::editor::editorcommand::EditorCommand;
+use editorcommand::EditorCommand;
 
 use {terminal as term, view::View};
 
