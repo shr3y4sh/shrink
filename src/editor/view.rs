@@ -1,5 +1,7 @@
 use std::{env, fs};
 
+use crate::editor::view::line::Line;
+
 use super::{
     cursor::Position,
     editorcommand::{Direction, EditorCommand},
@@ -89,11 +91,7 @@ impl View {
         let height = self.size.height;
 
         let doc_length = self.buff.lines.len();
-        let mut line_length: usize = 0;
-
-        if let Some(line) = self.buff.lines.get(y) {
-            line_length = line.len();
-        }
+        let line_length: usize = self.buff.lines.get(y).map_or(0, Line::len);
 
         match direction {
             Direction::Up => {
@@ -111,24 +109,19 @@ impl View {
             }
 
             Direction::Left => {
-                if y > 0
-                    && x == 0
-                    && let Some(prev) = self.buff.lines.get(y.saturating_sub(1))
-                {
-                    y = y.saturating_sub(1);
-                    x = prev.len();
+                if y > 0 && x == 0 {
+                    y -= 1;
+                    x = self.buff.lines.get(y).map_or(0, Line::len);
                 } else {
                     x = x.saturating_sub(1);
                 }
             }
             Direction::Right => {
                 if x < line_length {
-                    x = x.saturating_add(1);
-                } else {
+                    x += 1;
+                } else if y < doc_length {
                     x = 0;
-                    if y < doc_length {
-                        y = y.saturating_add(1);
-                    }
+                    y += 1;
                 }
             }
             Direction::End => x = line_length,
